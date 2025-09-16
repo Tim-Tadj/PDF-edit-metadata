@@ -1,130 +1,171 @@
 # -*- coding: utf-8 -*-
-"""
-Setup script for cx_Freeze to build the PDF Batch Metadata Editor.
-
-Usage:
-  Build executable: python setup.py build
-  Build MSI installer: python setup.py bdist_msi
-"""
-
-import sys
+from cx_Freeze import Executable, setup
 import os
-from cx_Freeze import setup, Executable
-import uuid # To generate a unique ID
+import sys
 
-# --- Configuration ---
-# !! Replace these placeholders with your actual details !!
 APP_NAME = "PDF Batch Metadata Editor"
-APP_VERSION = "0.1.0" # Increment as needed
+APP_VERSION = "0.1.0"
 APP_DESCRIPTION = "Batch edit Title, Author, and Initial View for PDF files."
-MAIN_SCRIPT = "pdf-meta-editor-gui.py" # <<< Your main Python script file name
-COMPANY_NAME = "Witthoft Engineering" # <<< Your Company or Name
-ICON_FILE = "we_icon_86I_icon.ico" # <<< Path to your .ico file (optional)
-# --- End Configuration ---
+AUTHOR = ""
+MAIN_SCRIPT = "pdf-meta-editor-gui.py"
+TARGET_EXE = "PDFBatchMetadataEditor.exe"
+BUILD_DIR = "build/PDFBatchMetadataEditor"
+UPGRADE_CODE = "{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}"
+TARGET_DIR = r"[ProgramFilesFolder]\\PDF Batch Metadata Editor"
+MSI_TARGET_NAME = "PDFBatchMetadataEditor"
 
-# Generate a unique Upgrade Code for the MSI installer
-# IMPORTANT: Keep this UUID the same across different versions
-# of this specific application for upgrades to work correctly.
-# Generate a new one only if this is a completely different product.
-# You can generate one using: import uuid; print(uuid.uuid4())
-# Example GUID: f81d4fae-7dec-11d0-a765-00a0c91e6bf6
-UPGRADE_CODE = "{f81d4fae-7dec-11d0-a765-00a0c91e6bf6}" 
-# --- Automatically determine base ---
-base = None
-if sys.platform == "win32":
-    base = "Win32GUI"
-
-# --- Define the executable ---
-target_exe_name = f"{APP_NAME.replace(' ', '')}.exe" # e.g., PDFBatchMetadataEditor.exe
-executables = [
-    Executable(
-        script=MAIN_SCRIPT,
-        base=base,
-        target_name=target_exe_name,
-        icon=ICON_FILE if os.path.exists(ICON_FILE) else None,
-    )
+PACKAGES = [
+    "os",
+    "sys",
+    "re",
+    "openpyxl",
+    "pypdf",
+    "PySide6",
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtWidgets",
 ]
 
-# --- Build options ---
-packages = ["os", "sys", "pypdf", "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets"]
-includes = []
-excludes = ["tkinter", "unittest"]
-include_files = []
-if os.path.exists(ICON_FILE):
-    include_files.append(ICON_FILE) # Still include the icon file itself if needed elsewhere
+INCLUDES = [
+    "openpyxl",
+    "pypdf",
+    "pypdf.errors",
+    "pypdf.generic",
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtWidgets",
+]
+
+INCLUDE_FILES = []
+
+BIN_EXCLUDES = [
+    "Qt6WebEngineCore.dll",
+    "Qt6WebEngine.dll",
+    "Qt6WebEngineWidgets.dll",
+    "QtPdf.dll",
+    "QtPdfQuick.dll",
+]
+
+PYSIDE_EXCLUDES = [
+    "PySide6.Qt3DAnimation",
+    "PySide6.Qt3DCore",
+    "PySide6.Qt3DExtras",
+    "PySide6.Qt3DInput",
+    "PySide6.Qt3DLogic",
+    "PySide6.Qt3DRender",
+    "PySide6.QtCharts",
+    "PySide6.QtConcurrent",
+    "PySide6.QtDataVisualization",
+    "PySide6.QtGraphs",
+    "PySide6.QtMultimedia",
+    "PySide6.QtMultimediaWidgets",
+    "PySide6.QtNetworkAuth",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
+    "PySide6.QtPositioning",
+    "PySide6.QtQml",
+    "PySide6.QtQmlModels",
+    "PySide6.QtQuick",
+    "PySide6.QtQuick3D",
+    "PySide6.QtQuickControls2",
+    "PySide6.QtQuickWidgets",
+    "PySide6.QtRemoteObjects",
+    "PySide6.QtSensors",
+    "PySide6.QtSerialPort",
+    "PySide6.QtStateMachine",
+    "PySide6.QtTextToSpeech",
+    "PySide6.QtVirtualKeyboard",
+    "PySide6.QtWebChannel",
+    "PySide6.QtWebEngine",
+    "PySide6.QtWebEngineCore",
+    "PySide6.QtWebEngineQuick",
+    "PySide6.QtWebEngineWidgets",
+    "PySide6.QtWebSockets",
+    "PySide6.QtWebView",
+    "PySide6.QtXml",
+    "PySide6.QtXmlPatterns",
+]
+
+THIRD_PARTY_EXCLUDES = [
+    "setuptools",
+    "wheel",
+    "importlib_metadata",
+    "backports",
+    "zipp",
+]
 
 build_exe_options = {
-    "packages": packages,
-    "includes": includes,
-    "excludes": excludes,
-    "include_files": include_files,
-    "optimize": 2,
-    "zip_include_packages": ["*"],
-    "zip_exclude_packages": [],
+    "packages": PACKAGES,
+    "includes": INCLUDES,
+    "include_files": INCLUDE_FILES,
+    "include_msvcr": True,
+    "excludes": [
+        "tkinter",
+        *PYSIDE_EXCLUDES,
+        *THIRD_PARTY_EXCLUDES,
+    ],
+    "build_exe": BUILD_DIR,
+    "bin_excludes": BIN_EXCLUDES,
 }
 
-# --- MSI Installer options ---
-# Define shortcut table structure
-# *** The key change is in the 'Icon' parameter for each shortcut ***
 shortcut_table = [
     (
-        "DesktopShortcut",        # Shortcut Identifier
-        "DesktopFolder",          # Directory_
-        APP_NAME,                 # Name
-        "TARGETDIR",              # Component_ -> Needs to match component containing the exe
-        f"[TARGETDIR]{target_exe_name}",# Target -> Reference the installed exe
-        None,                     # Arguments
-        APP_DESCRIPTION,          # Description
-        None,                     # Hotkey
-        # --- MODIFIED HERE ---
-        f"[TARGETDIR]{target_exe_name}", # Icon -> Point to the EXE containing the embedded icon
-        0,                        # IconIndex -> Use the first icon in the EXE
-        None,                     # ShowCmd
-        "TARGETDIR",              # WkDir
+        "DesktopShortcut",
+        "DesktopFolder",
+        APP_NAME,
+        "TARGETDIR",
+        f"[TARGETDIR]{TARGET_EXE}",
+        None,
+        APP_DESCRIPTION,
+        None,
+        f"[TARGETDIR]{TARGET_EXE}",
+        0,
+        None,
+        "TARGETDIR",
     ),
-     (
-        "ProgramMenuShortcut",      # Shortcut Identifier
-        "ProgramMenuFolder",        # Directory_
-        APP_NAME,                   # Name
-        "TARGETDIR",                # Component_ -> Needs to match component containing the exe
-        f"[TARGETDIR]{target_exe_name}",# Target -> Reference the installed exe
-        None,                       # Arguments
-        APP_DESCRIPTION,            # Description
-        None,                       # Hotkey
-        # --- MODIFIED HERE ---
-        f"[TARGETDIR]{target_exe_name}", # Icon -> Point to the EXE containing the embedded icon
-        0,                          # IconIndex -> Use the first icon in the EXE
-        None,                       # ShowCmd
-        "TARGETDIR",                # WkDir
+    (
+        "ProgramMenuShortcut",
+        "ProgramMenuFolder",
+        APP_NAME,
+        "TARGETDIR",
+        f"[TARGETDIR]{TARGET_EXE}",
+        None,
+        APP_DESCRIPTION,
+        None,
+        f"[TARGETDIR]{TARGET_EXE}",
+        0,
+        None,
+        "TARGETDIR",
+    ),
+]
+
+bdist_msi_options = {
+    "upgrade_code": UPGRADE_CODE,
+    "add_to_path": False,
+    "all_users": False,
+    "initial_target_dir": TARGET_DIR,
+    "target_name": MSI_TARGET_NAME,
+    "data": {"Shortcut": shortcut_table},
+}
+
+base = "Win32GUI" if sys.platform == "win32" else None
+
+executables = [
+    Executable(
+        MAIN_SCRIPT,
+        base=base,
+        target_name=TARGET_EXE,
     )
 ]
 
-# MSI data including shortcuts
-msi_data = {"Shortcut": shortcut_table}
-
-bdist_msi_options = {
-    "add_to_path": False,
-    "initial_target_dir": r"[ProgramFilesFolder]\{}\{}".format(COMPANY_NAME, APP_NAME),
-    "upgrade_code": UPGRADE_CODE,
-    "data": msi_data,
-    # Ensure the component containing the executable is correctly referenced if not default
-    # "all_users": True, # Optional: Install for all users
-}
-
-# --- Setup configuration ---
 setup(
     name=APP_NAME,
     version=APP_VERSION,
     description=APP_DESCRIPTION,
-    author=COMPANY_NAME,
+    author=AUTHOR,
     options={
         "build_exe": build_exe_options,
         "bdist_msi": bdist_msi_options,
     },
     executables=executables,
 )
-
-print("\n--- Build Process Finished ---")
-print(f"Executable likely in: build/exe.{sys.platform}-...")
-print(f"MSI installer likely in: dist/{APP_NAME}-{APP_VERSION}-...")
-
