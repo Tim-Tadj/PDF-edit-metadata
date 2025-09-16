@@ -1,0 +1,12 @@
+[project]
+name = "pdf-edit-metadata"
+version = "0.1.0"
+description = "Bulk edit pdf metadata"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "cx-freeze>=8.4.0",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.0.0",
+    "pyside6>=6.9.2",
+]
