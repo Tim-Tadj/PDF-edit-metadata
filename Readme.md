@@ -1,6 +1,12 @@
 # PDF Metadata Editor
 
-A simple Windows desktop application for batch-editing PDF metadata (Title, Author, Subject, Creator, Producer, Keywords) and setting initial view defaults. Built with PySide6 and pypdf.
+A simple Windows desktop application for batch-editing PDF metadata (Title, Author, Subject, Creator, Producer, Keywords) and setting initial view defaults. Built with PySide6 and PyMuPDF.
+
+## User Guide
+
+A detailed user guide is available on our internal wiki:
+
+**[PDF Metadata Editor User Guide](https://bookstack.witthoft.com.au/books/power-system-tools-skm-ptw-others/page/pdf-metadata-editor-user-guide)**
 
 ## Features
 
@@ -11,7 +17,7 @@ A simple Windows desktop application for batch-editing PDF metadata (Title, Auth
 - **Preserve folder structure** — outputs files into the same relative subdirectories as the input
 - **In-place or separate output** — save to a new `_processed` folder, or overwrite originals directly
 
-## User Guide
+## Quick Start
 
 ### 1. Setup
 
@@ -44,6 +50,10 @@ Click **Start Processing**.
 - Click **Stop** at any time to halt after the current file finishes
 
 When complete, a summary dialog shows how many files succeeded or failed.
+
+## Installing
+
+Download the latest MSI installer from the [Releases](https://github.com/Tim-Tadj/PDF-edit-metadata/releases) page and run it.
 
 ## Developer Guide
 
