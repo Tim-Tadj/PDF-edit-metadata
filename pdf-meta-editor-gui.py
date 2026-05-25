@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import re
 
 # Fix for cx_Freeze placing DLLs in lib/ subfolder on Windows
 if getattr(sys, "frozen", False) and sys.platform == "win32":
@@ -37,9 +38,20 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QKeySequence
 
-from pypdf import PdfReader, PdfWriter
-from pypdf.errors import PdfReadError
-from pypdf.generic import NameObject, TextStringObject
+import fitz  # PyMuPDF
+
+
+def _remove_catalog_key(doc: fitz.Document, key: str):
+    """Remove a key from the PDF Catalog by rewriting the object string."""
+    cat_xref = doc.pdf_catalog()
+    cat_str = doc.xref_object(cat_xref)
+    # Match /Key followed by a PDF value (name, ref, string, array, dict, number).
+    # This regex is intentionally simple: it matches the key and the next token/object.
+    # For robustness we split into two cases: simple tokens vs bracketed objects.
+    pattern = rf"/{re.escape(key)}\s+(?:(?:\[[^\]]*\])|(?:<<[^>>]*>>)|(?:/\w+)|(?:\d+\s+\d+\s+R)|(?:\([^)]*\))|<[^>]*>|[^\s<<\[/()]+)"
+    cleaned = re.sub(pattern, "", cat_str, count=1)
+    if cleaned != cat_str:
+        doc.update_object(cat_xref, cleaned)
 
 
 def set_pdf_metadata(
@@ -53,83 +65,38 @@ def set_pdf_metadata(
     new_keywords: str | None = None,
     set_initial_view_defaults: bool = True,
 ):
+    doc = fitz.open(input_pdf_path)
     try:
-        reader = PdfReader(input_pdf_path, strict=False)
-    except FileNotFoundError:
-        raise
-    except PdfReadError as e:
-        print(f"Warning: Corrupt or unreadable PDF: {os.path.basename(input_pdf_path)} - {e}")
-        raise
-    except Exception as e:
-        print(f"Warning: Error reading PDF: {os.path.basename(input_pdf_path)} - {e}")
-        raise
+        # Build metadata dict only for fields that should be changed
+        meta = {}
+        if new_title is not None:
+            meta["title"] = new_title
+        if new_author is not None:
+            meta["author"] = new_author
+        if new_subject is not None:
+            meta["subject"] = new_subject
+        if new_creator is not None:
+            meta["creator"] = new_creator
+        if new_producer is not None:
+            meta["producer"] = new_producer
+        if new_keywords is not None:
+            meta["keywords"] = new_keywords
 
-    writer = PdfWriter()
-    try:
-        writer.clone_document_from_reader(reader)
-    except Exception as e:
-        print(f"Warning: Could not fully clone document: {os.path.basename(input_pdf_path)} - {e}")
-        try:
-            writer.append_pages_from_reader(reader)
-        except Exception as e_append:
-            print(f"Error: Failed to append pages for {os.path.basename(input_pdf_path)}: {e_append}")
-            raise Exception(f"Cloning and appending failed for {input_pdf_path}") from e_append
+        if meta:
+            doc.set_metadata(meta)
 
-    metadata_update = {}
-    field_map = {
-        "/Title": new_title,
-        "/Author": new_author,
-        "/Subject": new_subject,
-        "/Creator": new_creator,
-        "/Producer": new_producer,
-        "/Keywords": new_keywords,
-    }
+        if set_initial_view_defaults:
+            # 1. Set Navigation Tab to "Page Only"
+            doc.set_pagemode("UseNone")
+            # 2. Remove Page Layout setting (use default)
+            _remove_catalog_key(doc, "PageLayout")
+            # 3. Remove OpenAction
+            _remove_catalog_key(doc, "OpenAction")
 
-    for key, value in field_map.items():
-        if value is not None:
-            metadata_update[key] = TextStringObject(value)
-
-    merged_metadata = {}
-    try:
-        existing_metadata = reader.metadata
-        if existing_metadata:
-            merged_metadata.update(existing_metadata)
-    except Exception:
-        print(f"Warning: Could not read existing metadata for {os.path.basename(input_pdf_path)}")
-
-    merged_metadata.update(metadata_update)
-
-    if merged_metadata:
-        try:
-            writer.add_metadata(merged_metadata)
-        except Exception as e:
-            print(f"Warning: Could not write metadata for {os.path.basename(input_pdf_path)}: {e}")
-
-    if set_initial_view_defaults:
-        try:
-            if writer.root_object and isinstance(writer.root_object, dict):
-                writer.root_object[NameObject("/PageMode")] = NameObject("/UseNone")
-                if NameObject("/PageLayout") in writer.root_object:
-                    del writer.root_object[NameObject("/PageLayout")]
-                if NameObject("/OpenAction") in writer.root_object:
-                    del writer.root_object[NameObject("/OpenAction")]
-            else:
-                print(f"Warning: Could not set initial view defaults for {os.path.basename(input_pdf_path)} - Root object issue.")
-        except Exception as e:
-            print(f"Warning: Could not set initial view defaults for {os.path.basename(input_pdf_path)}: {e}")
-
-    os.makedirs(os.path.dirname(output_pdf_path), exist_ok=True)
-    try:
-        with open(output_pdf_path, "wb") as output_file:
-            writer.write(output_file)
-    except Exception as e:
-        print(f"Error: Could not write output file {os.path.basename(output_pdf_path)}: {e}")
-        if os.path.exists(output_pdf_path):
-            try:
-                os.remove(output_pdf_path)
-            except OSError:
-                pass
-        raise
+        os.makedirs(os.path.dirname(output_pdf_path), exist_ok=True)
+        doc.save(output_pdf_path)
+    finally:
+        doc.close()
 
     return True
 
@@ -236,12 +203,6 @@ class MetadataWorker(QThread):
                 )
                 self.log_message.emit(f"  -> Success: Metadata set. Saved to '{rel_path}' in output.")
                 edited_succeeded += 1
-            except FileNotFoundError:
-                self.log_message.emit(f"  -> Error: Input file '{rel_path}' disappeared? (skipped)")
-                edited_failed += 1
-            except PdfReadError as e:
-                self.log_message.emit(f"  -> Error: Cannot read PDF '{rel_path}' (skipped): {e}")
-                edited_failed += 1
             except Exception as e:
                 self.log_message.emit(f"  -> Error: Processing/writing failed for '{rel_path}': {e}")
                 edited_failed += 1
@@ -590,12 +551,12 @@ class PdfMetadataEditorApp(QWidget):
 # --- Run Application ---
 if __name__ == "__main__":
     try:
-        import pypdf
+        import fitz
         from PySide6.QtWidgets import QApplication
     except ImportError as e:
         print(f"Error: Missing required library. Please install dependencies.")
         print(f"Missing: {e.name}")
-        print("Try running: pip install pypdf PySide6")
+        print("Try running: uv sync")
         sys.exit(1)
 
     app = QApplication(sys.argv)

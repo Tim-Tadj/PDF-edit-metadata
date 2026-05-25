@@ -61,7 +61,7 @@ uv run pdf-meta-editor-gui.py
 Or with plain Python:
 
 ```bash
-pip install pypdf PySide6
+pip install pymupdf PySide6
 python pdf-meta-editor-gui.py
 ```
 
@@ -96,10 +96,10 @@ Key sections under `[tool.cxfreeze]`:
 
 ### Known packaging fix
 
-When cx_Freeze bundles the app, it places dependency DLLs (e.g. `zlib.dll`) into a `lib/` subfolder next to the executable. Windows does not search subfolders for DLLs automatically, so the app includes a startup patch that adds the `lib` directory to the DLL search path when running as a frozen build.
+When cx_Freeze bundles the app, it places dependency DLLs into a `lib/` subfolder next to the executable. Windows does not search subfolders for DLLs automatically, so the app includes a startup patch that adds the `lib` directory to the DLL search path when running as a frozen build.
 
 ## Dependencies
 
-- [pypdf](https://github.com/py-pdf/pypdf) — PDF reading and writing
+- [PyMuPDF](https://github.com/pymupdf/PyMuPDF) — robust PDF reading and writing via MuPDF
 - [PySide6](https://doc.qt.io/qtforpython/) — Qt GUI framework
 - [cx_Freeze](https://marcelotduarte.github.io/cx_Freeze/) — freeze Python scripts into executables / MSI
